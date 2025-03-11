@@ -19,6 +19,7 @@ func main() {
 			"exit": true,
 			"type": true,
 			"pwd":  true,
+			"cd":   true,
 		}
 
 		fmt.Fprint(os.Stdout, "$ ")
@@ -44,6 +45,11 @@ func main() {
 		case "pwd":
 			dir, _ := os.Getwd()
 			fmt.Println(dir)
+		case "cd":
+			err := os.Chdir(args[1])
+			if err != nil {
+				fmt.Println("cd: " + args[1] + ": No such file or directory")
+			}
 		default:
 			cmd := exec.Command(args[0], args[1:]...)
 			stdout, err := cmd.Output()
