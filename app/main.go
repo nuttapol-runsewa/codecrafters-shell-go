@@ -42,7 +42,8 @@ func main() {
 			os.Exit(code)
 		default:
 			cmd := exec.Command(args[0], args[1:]...)
-			_ = cmd.Run()
+			stdout, _ := cmd.Output()
+			fmt.Println(string(stdout))
 		}
 	}
 }
