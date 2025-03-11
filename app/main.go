@@ -43,7 +43,7 @@ func main() {
 		default:
 			cmd := exec.Command(args[0], args[1:]...)
 			stdout, _ := cmd.Output()
-			fmt.Println(string(stdout))
+			fmt.Print(string(stdout))
 		}
 	}
 }
