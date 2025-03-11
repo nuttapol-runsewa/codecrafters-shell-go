@@ -41,7 +41,8 @@ func main() {
 			code, _ := strconv.Atoi(args[1])
 			os.Exit(code)
 		default:
-			fmt.Println(command + ": command not found")
+			cmd := exec.Command(args[0], args[1:]...)
+			_ = cmd.Run()
 		}
 	}
 }
