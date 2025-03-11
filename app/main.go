@@ -42,8 +42,12 @@ func main() {
 			os.Exit(code)
 		default:
 			cmd := exec.Command(args[0], args[1:]...)
-			stdout, _ := cmd.Output()
-			fmt.Print(string(stdout))
+			stdout, err := cmd.Output()
+			if err != nil {
+				fmt.Println(args[1] + ": command not found")
+			} else {
+				fmt.Print(string(stdout))
+			}
 		}
 	}
 }
