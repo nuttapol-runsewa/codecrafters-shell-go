@@ -18,6 +18,7 @@ func main() {
 			"echo": true,
 			"exit": true,
 			"type": true,
+			"pwd":  true,
 		}
 
 		fmt.Fprint(os.Stdout, "$ ")
@@ -40,6 +41,9 @@ func main() {
 		case "exit":
 			code, _ := strconv.Atoi(args[1])
 			os.Exit(code)
+		case "pwd":
+			dir, _ := os.Getwd()
+			fmt.Println(dir)
 		default:
 			cmd := exec.Command(args[0], args[1:]...)
 			stdout, err := cmd.Output()
