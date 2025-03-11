@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -27,8 +28,12 @@ func main() {
 		args := strings.Split(command, " ")
 		switch args[0] {
 		case "type":
+			path := os.Getenv("PATH")
+			paths := strings.Split(path, ":")
 			if builtinCommands[args[1]] {
 				fmt.Println(args[1] + " is a shell builtin")
+			} else if slices.Contains(paths, args[1]) {
+				fmt.Println(args[1] + " is " + paths[slices.Index(paths, args[1])])
 			} else {
 				fmt.Println(args[1] + ": not found")
 			}
