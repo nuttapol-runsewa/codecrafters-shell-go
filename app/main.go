@@ -44,7 +44,7 @@ func main() {
 			cmd := exec.Command(args[0], args[1:]...)
 			stdout, err := cmd.Output()
 			if err != nil {
-				fmt.Println(args[1] + ": command not found")
+				fmt.Println(args[0] + ": command not found")
 			} else {
 				fmt.Print(string(stdout))
 			}
