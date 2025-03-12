@@ -31,8 +31,8 @@ func main() {
 		if command == "" {
 			continue
 		}
-
-		cmd, args := parseArgs(command)
+		cmd, arg, _ := strings.Cut(command, " ")
+		args := parseArgs(arg)
 		if handler, ok := builtinCommands[cmd]; ok {
 			handler(args)
 		} else {
@@ -41,52 +41,30 @@ func main() {
 	}
 }
 
-func parseArgs(command string) (string, []string) {
-	var args []string
-	var currentArg strings.Builder
-	inQuotes := false
-	var cmd string
-	firstWord := true
+func parseArgs(inputString string) []string {
+	var words []string
+	var insideQuotes bool
+	var currentWordBuilder strings.Builder
 
-	for _, char := range command {
-		if char == '\'' && !inQuotes {
-			inQuotes = true
-		} else if char == '\'' && inQuotes {
-			inQuotes = false
-			unquoted, err := strconv.Unquote("'" + currentArg.String() + "'")
-			if err != nil {
-				args = append(args, currentArg.String())
-			} else {
-				args = append(args, unquoted)
+	for _, char := range inputString {
+		switch {
+		case char == '\'':
+			insideQuotes = !insideQuotes
+		case char == ' ' && !insideQuotes:
+			if currentWordBuilder.Len() > 0 {
+				words = append(words, currentWordBuilder.String())
+				currentWordBuilder.Reset()
 			}
-			currentArg.Reset()
-		} else if char == ' ' && !inQuotes {
-			if currentArg.Len() > 0 {
-				if firstWord {
-					cmd = currentArg.String()
-					firstWord = false
-				} else {
-					args = append(args, currentArg.String())
-				}
-				currentArg.Reset()
-			}
-		} else {
-			currentArg.WriteRune(char)
+		default:
+			currentWordBuilder.WriteRune(char)
 		}
 	}
 
-	if currentArg.Len() > 0 {
-		if firstWord {
-			cmd = currentArg.String()
-		} else {
-			args = append(args, currentArg.String())
-		}
-	}
-	if firstWord {
-		cmd = currentArg.String()
+	if currentWordBuilder.Len() > 0 {
+		words = append(words, currentWordBuilder.String())
 	}
 
-	return cmd, args
+	return words
 }
 
 func handleType(args []string) {
@@ -158,7 +136,7 @@ func executeExternalCommand(command string, args []string) {
 	cmd := exec.Command(command, args...)
 	stdout, err := cmd.Output()
 	if err != nil {
-		fmt.Println(args[0] + ": command not found")
+		fmt.Println(command + ": command not found")
 		return
 	}
 	fmt.Print(string(stdout))
