@@ -32,17 +32,65 @@ func main() {
 			continue
 		}
 
-		args := strings.Split(command, " ")
-		if handler, ok := builtinCommands[args[0]]; ok {
+		cmd, args := parseArgs(command)
+		if handler, ok := builtinCommands[cmd]; ok {
 			handler(args)
 		} else {
-			executeExternalCommand(args)
+			executeExternalCommand(cmd, args)
 		}
 	}
 }
 
+func parseArgs(command string) (string, []string) {
+	var args []string
+	var currentArg strings.Builder
+	inQuotes := false
+	var cmd string
+	firstWord := true
+
+	for _, char := range command {
+		if char == '\'' && !inQuotes {
+			inQuotes = true
+		} else if char == '\'' && inQuotes {
+			inQuotes = false
+			unquoted, err := strconv.Unquote("'" + currentArg.String() + "'")
+			if err != nil {
+				args = append(args, currentArg.String())
+			} else {
+				args = append(args, unquoted)
+			}
+			currentArg.Reset()
+		} else if char == ' ' && !inQuotes {
+			if currentArg.Len() > 0 {
+				if firstWord {
+					cmd = currentArg.String()
+					firstWord = false
+				} else {
+					args = append(args, currentArg.String())
+				}
+				currentArg.Reset()
+			}
+		} else {
+			currentArg.WriteRune(char)
+		}
+	}
+
+	if currentArg.Len() > 0 {
+		if firstWord {
+			cmd = currentArg.String()
+		} else {
+			args = append(args, currentArg.String())
+		}
+	}
+	if firstWord {
+		cmd = currentArg.String()
+	}
+
+	return cmd, args
+}
+
 func handleType(args []string) {
-	if len(args) < 2 {
+	if len(args) < 1 {
 		fmt.Println("type: missing argument")
 		return
 	}
@@ -55,22 +103,22 @@ func handleType(args []string) {
 		"cd":   true,
 	}
 
-	if builtinCommands[args[1]] {
-		fmt.Println(args[1] + " is a shell builtin")
-	} else if path, err := exec.LookPath(args[1]); err == nil {
-		fmt.Println(args[1], "is", path)
+	if builtinCommands[args[0]] {
+		fmt.Println(args[0] + " is a shell builtin")
+	} else if path, err := exec.LookPath(args[0]); err == nil {
+		fmt.Println(args[0], "is", path)
 	} else {
-		fmt.Println(args[1] + ": not found")
+		fmt.Println(args[0] + ": not found")
 	}
 }
 
 func handleEcho(args []string) {
-	fmt.Println(strings.Join(args[1:], " "))
+	fmt.Println(strings.Join(args, " "))
 }
 
 func handleExit(args []string) {
-	if len(args) > 1 {
-		if code, err := strconv.Atoi(args[1]); err == nil {
+	if len(args) > 0 {
+		if code, err := strconv.Atoi(args[0]); err == nil {
 			os.Exit(code)
 		} else {
 			fmt.Println("exit: numeric argument required")
@@ -90,12 +138,12 @@ func handlePwd(args []string) {
 }
 
 func handleCd(args []string) {
-	if len(args) < 2 {
+	if len(args) < 1 {
 		fmt.Println("cd: missing argument")
 		return
 	}
 
-	target := args[1]
+	target := args[0]
 	if target == "~" {
 		target = os.Getenv("HOME")
 	}
@@ -106,8 +154,8 @@ func handleCd(args []string) {
 	}
 }
 
-func executeExternalCommand(args []string) {
-	cmd := exec.Command(args[0], args[1:]...)
+func executeExternalCommand(command string, args []string) {
+	cmd := exec.Command(command, args...)
 	stdout, err := cmd.Output()
 	if err != nil {
 		fmt.Println(args[0] + ": command not found")
