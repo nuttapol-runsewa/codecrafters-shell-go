@@ -48,7 +48,7 @@ func parseArgs(inputString string) []string {
 
 	for _, char := range inputString {
 		switch {
-		case char == '\'':
+		case char == '\'' || char == '"':
 			insideQuotes = !insideQuotes
 		case char == ' ' && !insideQuotes:
 			if currentWordBuilder.Len() > 0 {
@@ -133,7 +133,11 @@ func handleCd(args []string) {
 }
 
 func executeExternalCommand(command string, args []string) {
-	cmd := exec.Command(command, args...)
+	wrappedArgs := make([]string, len(args))
+	for i, arg := range args {
+		wrappedArgs[i] = "\"" + arg + "\""
+	}
+	cmd := exec.Command(command, wrappedArgs...)
 	stdout, err := cmd.Output()
 	if err != nil {
 		fmt.Println(command + ": command not found")
