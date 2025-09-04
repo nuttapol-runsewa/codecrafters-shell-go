@@ -13,25 +13,26 @@ func main() {
 	builtinCommands := map[string]func([]string){
 		"echo": handleEcho,
 		"exit": handleExit,
-		"type": handleType,
+		"type": nil, // placeholder
 		"pwd":  handlePwd,
 		"cd":   handleCd,
 	}
-
+	builtinCommands["type"] = func(args []string) { handleType(args, builtinCommands) }
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("$ ")
-
-		command, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		line, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			return
 		}
 
-		command = strings.TrimSpace(command)
-		if command == "" {
+		line = strings.TrimSpace(line)
+		if line == "" {
 			continue
 		}
-		cmd, arg, _ := strings.Cut(command, " ")
+
+		cmd, arg, _ := strings.Cut(line, " ")
 		args := parseArgs(arg)
 		if handler, ok := builtinCommands[cmd]; ok {
 			handler(args)
@@ -41,14 +42,16 @@ func main() {
 	}
 }
 
-func parseArgs(inputString string) []string {
-	var words []string
-	var insideSingleQuotes bool
-	var insideDoubleQuotes bool
-	var escaped bool
-	var currentWordBuilder strings.Builder
+func parseArgs(input string) []string {
+	var (
+		words              []string
+		insideSingleQuotes bool
+		insideDoubleQuotes bool
+		escaped            bool
+		currentWordBuilder strings.Builder
+	)
 
-	for _, char := range inputString {
+	for _, char := range input {
 		switch {
 		case char == '\\' && !insideSingleQuotes && !insideDoubleQuotes:
 			escaped = true
@@ -60,7 +63,7 @@ func parseArgs(inputString string) []string {
 			escaped = false
 		case char == '\'' && !insideDoubleQuotes:
 			insideSingleQuotes = !insideSingleQuotes
-		case char == '"':
+		case char == '"' && !insideSingleQuotes:
 			insideDoubleQuotes = !insideDoubleQuotes
 		case char == ' ' && !insideSingleQuotes && !insideDoubleQuotes:
 			if currentWordBuilder.Len() > 0 {
@@ -71,35 +74,10 @@ func parseArgs(inputString string) []string {
 			currentWordBuilder.WriteRune(char)
 		}
 	}
-
 	if currentWordBuilder.Len() > 0 {
 		words = append(words, currentWordBuilder.String())
 	}
-
 	return words
-}
-
-func handleType(args []string) {
-	if len(args) < 1 {
-		fmt.Println("type: missing argument")
-		return
-	}
-
-	builtinCommands := map[string]bool{
-		"echo": true,
-		"exit": true,
-		"type": true,
-		"pwd":  true,
-		"cd":   true,
-	}
-
-	if builtinCommands[args[0]] {
-		fmt.Println(args[0] + " is a shell builtin")
-	} else if path, err := exec.LookPath(args[0]); err == nil {
-		fmt.Println(args[0], "is", path)
-	} else {
-		fmt.Println(args[0] + ": not found")
-	}
 }
 
 func handleEcho(args []string) {
@@ -107,15 +85,32 @@ func handleEcho(args []string) {
 }
 
 func handleExit(args []string) {
+	code := 0
 	if len(args) > 0 {
-		if code, err := strconv.Atoi(args[0]); err == nil {
-			os.Exit(code)
+		if val, err := strconv.Atoi(args[0]); err == nil {
+			code = val
 		} else {
 			fmt.Println("exit: numeric argument required")
-			os.Exit(1)
+			code = 1
 		}
 	}
-	os.Exit(0)
+	os.Exit(code)
+}
+
+func handleType(args []string, builtinCommands map[string]func([]string)) {
+	if len(args) < 1 {
+		fmt.Println("type: missing argument")
+		return
+	}
+	if _, ok := builtinCommands[args[0]]; ok {
+		fmt.Printf("%s is a shell builtin\n", args[0])
+		return
+	}
+	if path, err := exec.LookPath(args[0]); err == nil {
+		fmt.Printf("%s is %s\n", args[0], path)
+	} else {
+		fmt.Printf("%s: not found\n", args[0])
+	}
 }
 
 func handlePwd(args []string) {
@@ -132,24 +127,21 @@ func handleCd(args []string) {
 		fmt.Println("cd: missing argument")
 		return
 	}
-
 	target := args[0]
 	if target == "~" {
 		target = os.Getenv("HOME")
 	}
-
-	err := os.Chdir(target)
-	if err != nil {
-		fmt.Println("cd: " + target + ": No such file or directory")
+	if err := os.Chdir(target); err != nil {
+		fmt.Printf("cd: %s: No such file or directory\n", target)
 	}
 }
 
 func executeExternalCommand(command string, args []string) {
 	cmd := exec.Command(command, args...)
-	stdout, err := cmd.Output()
+	output, err := cmd.Output()
 	if err != nil {
-		fmt.Println(command + ": command not found")
+		fmt.Printf("%s: command not found\n", command)
 		return
 	}
-	fmt.Print(string(stdout))
+	fmt.Print(string(output))
 }
