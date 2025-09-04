@@ -45,10 +45,16 @@ func parseArgs(inputString string) []string {
 	var words []string
 	var insideSingleQuotes bool
 	var insideDoubleQuotes bool
+	var escaped bool
 	var currentWordBuilder strings.Builder
 
 	for _, char := range inputString {
 		switch {
+		case char == '\\' && !insideSingleQuotes && !insideDoubleQuotes:
+			escaped = true
+		case escaped:
+			currentWordBuilder.WriteRune(char)
+			escaped = false
 		case char == '\'' && !insideDoubleQuotes:
 			insideSingleQuotes = !insideSingleQuotes
 		case char == '"':
