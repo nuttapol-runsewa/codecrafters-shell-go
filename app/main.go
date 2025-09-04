@@ -50,7 +50,10 @@ func parseArgs(inputString string) []string {
 
 	for _, char := range inputString {
 		switch {
-		case char == '\\' && !insideDoubleQuotes:
+		case char == '\\' && !insideSingleQuotes && !insideDoubleQuotes:
+			escaped = true
+		case char == '\\' && insideSingleQuotes:
+			currentWordBuilder.WriteRune(char)
 			escaped = true
 		case escaped:
 			currentWordBuilder.WriteRune(char)
